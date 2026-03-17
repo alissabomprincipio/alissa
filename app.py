@@ -65,4 +65,44 @@ with st.sidebar:
 
 if botao_gerar and foto_capturada and evento_usuario:
     with st.spinner("Analisando sua foto e criando seu look exclusivo... Isso pode levar um minuto."):
-        imagem_pil = Image.
+        imagem_pil = Image.open(foto_capturada)
+        resultado_analise = analisar_imagem_e_evento(imagem_pil, evento_usuario)
+        
+        descricao_look = "A descrição do look não pôde ser gerada."
+        prompt_para_imagem = ""
+        
+        if "SEPARADOR_DE_CONTEUDO" in resultado_analise:
+            try:
+                partes = resultado_analise.split("SEPARADOR_DE_CONTEUDO")
+                descricao_look = partes[0].strip()
+                prompt_para_imagem = partes[1].strip()
+            except Exception as e:
+                st.error(f"Erro ao processar a resposta da IA: {e}")
+                descricao_look = resultado_analise
+        else:
+            descricao_look = resultado_analise
+            
+        imagem_sugerida = None
+        if prompt_para_imagem:
+            imagem_sugerida = gerar_imagem_do_look(prompt_para_imagem)
+            
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Sua Sugestão de Look")
+            st.markdown(descricao_look)
+            
+        with col2:
+            st.subheader("Visualização do Look")
+            if imagem_sugerida:
+                st.image(imagem_sugerida, caption="Look gerado pela I.A. para você", use_container_width=True)
+            else:
+                st.warning("Não foi possível gerar uma visualização para este look no momento.")
+
+elif botao_gerar:
+    st.warning("Por favor, tire sua foto e nos diga a ocasião antes de continuar.")
+
+else:
+    st.info("Para começar, tire sua foto e nos diga a ocasião na barra lateral e clique em 'Gerar Sugestão de Look'.")
+
+st.markdown(f"--- \n\n<p style='text-align: center; color: #666;'>{TEXTO_RODAPE}</p>", unsafe_allow_html=True)
