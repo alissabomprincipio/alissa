@@ -1,5 +1,6 @@
 import streamlit as st
 from google import genai
+from google.genai import types
 from PIL import Image
 import io
 
@@ -27,7 +28,7 @@ def analisar_imagem_e_evento(imagem_pil, texto_evento):
     crie uma sugestão completa de look profissional e fashion.
     Sua resposta deve ter obrigatoriamente duas partes, divididas exatamente pela palavra-chave "SEPARADOR_DE_CONTEUDO":
     Parte 1 (Descrição para a cliente): Uma descrição detalhada e elegante do look sugerido, explicando por que as peças funcionam para ela e para a ocasião.
-    Parte 2 (Prompt para a IA de imagem): Um prompt fotográfico preciso, em alta definição e realista para um modelo de geração de imagem criar uma foto de uma modelo (com características similares à pessoa da foto original) vestindo exatamente esse look completo no ambiente do evento. Foque em detalhes de iluminação, pose e textura dos tecidos.
+    Parte 2 (Prompt para a IA de imagem): Um prompt fotográfico preciso, em alta definição e realista para criar uma foto de moda de uma pessoa (com características similares) vestindo exatamente esse look no ambiente do evento.
     """
     
     try:
@@ -41,15 +42,25 @@ def analisar_imagem_e_evento(imagem_pil, texto_evento):
 
 def gerar_imagem_do_look(prompt_imagem):
     try:
-        # AQUI ESTÁ A CORREÇÃO: O modelo exato é o 001
-        response = client.models.generate_images(
-            model='imagen-3.0-generate-001',
-            prompt=prompt_imagem
+        # AQUI É ONDE EU ERREI. 
+        # Trocamos para o modelo 2.5-flash-image usando o generate_content normal,
+        # configurado para devolver apenas IMAGEM.
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-image',
+            contents=prompt_imagem,
+            config=types.GenerateContentConfig(
+                response_modalities=["IMAGE"],
+            )
         )
-        image_bytes = response.generated_images[0].image.image_bytes
-        return Image.open(io.BytesIO(image_bytes))
+        
+        # Pega os bytes da imagem que volta embutida na resposta
+        for part in response.parts:
+            if part.inline_data:
+                return Image.open(io.BytesIO(part.inline_data.data))
+                
+        return None
     except Exception as e:
-        st.error(f"Erro ao gerar a visualização do look: {e}")
+        st.error(f"Erro da API de imagem: {e}")
         return None
 
 # --- Interface ---
@@ -78,7 +89,6 @@ if botao_gerar and foto_capturada and evento_usuario:
                 descricao_look = partes[0].strip()
                 prompt_para_imagem = partes[1].strip()
             except Exception as e:
-                st.error(f"Erro ao processar a resposta da IA: {e}")
                 descricao_look = resultado_analise
         else:
             descricao_look = resultado_analise
