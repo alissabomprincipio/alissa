@@ -41,8 +41,9 @@ def analisar_imagem_e_evento(imagem_pil, texto_evento):
 
 def gerar_imagem_do_look(prompt_imagem):
     try:
+        # AQUI ESTÁ A CORREÇÃO: O modelo exato é o 001
         response = client.models.generate_images(
-            model='imagen-3.0-generate-002',
+            model='imagen-3.0-generate-001',
             prompt=prompt_imagem
         )
         image_bytes = response.generated_images[0].image.image_bytes
