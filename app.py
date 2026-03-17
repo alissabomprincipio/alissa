@@ -76,6 +76,6 @@ if foto and evento:
                 st.write(response.text)
                 
             except Exception as e:
-                st.error("Erro na análise. Verifique se sua API Key é válida.")
+              st.error(f"Erro real do Google: {e}")
 
 st.markdown("<br><br><p style='text-align: center; font-size: 0.7em; color: #999;'>POWERED BY BH VISION ENGINE</p>", unsafe_allow_html=True)
