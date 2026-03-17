@@ -69,7 +69,7 @@ if foto and evento:
                 Seja sofisticada e direta no texto. Use emojis de moda.
                 """
 
-                response = client.models.generate_content(model='gemini-2.0-flash', contents=[prompt, img])
+                response = client.models.generate_content(model='gemini-2.5-flash', contents=[prompt, img])
                 
                 st.markdown("---")
                 st.subheader("Sugestão Alissa:")
