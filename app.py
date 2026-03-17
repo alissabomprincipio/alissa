@@ -5,7 +5,7 @@ from PIL import Image
 import io
 
 # Configuração da página
-st.set_page_config(layout="wide", page_title="Assistente de Estilo")
+st.set_page_config(layout="wide", page_title="Assistente de Estilo Profissional")
 
 NOME_DO_APP = "Seu Consultor de Moda I.A."
 SUBTITULO_APP = "Descubra o look ideal para qualquer momento."
@@ -22,13 +22,16 @@ except KeyError:
 client = genai.Client(api_key=API_KEY)
 
 def analisar_imagem_e_evento(imagem_pil, texto_evento):
+    """
+    Analisa a foto e o evento, gerando a descrição do look e o prompt da imagem.
+    """
     prompt = f"""
     Analise a foto da pessoa fornecida e o seguinte evento ou ocasião: '{texto_evento}'.
     Com base nas características físicas da pessoa, estilo percebido na foto e no evento,
     crie uma sugestão completa de look profissional e fashion.
     Sua resposta deve ter obrigatoriamente duas partes, divididas exatamente pela palavra-chave "SEPARADOR_DE_CONTEUDO":
     Parte 1 (Descrição para a cliente): Uma descrição detalhada e elegante do look sugerido, explicando por que as peças funcionam para ela e para a ocasião.
-    Parte 2 (Prompt para a IA de imagem): Um prompt fotográfico preciso, em alta definição e realista para criar uma foto de moda de uma pessoa (com características similares) vestindo exatamente esse look no ambiente do evento.
+    Parte 2 (Prompt para a IA de imagem): Um prompt fotográfico preciso, em alta definição e realista para criar uma foto de moda. O prompt deve descrever uma pessoa com características físicas e faciais idênticas à pessoa na foto original, vestindo exatamente esse look completo no ambiente do evento. Foque em detalhes de iluminação, pose e textura dos tecidos.
     """
     
     try:
@@ -41,10 +44,11 @@ def analisar_imagem_e_evento(imagem_pil, texto_evento):
         return f"Erro durante a análise: {e}"
 
 def gerar_imagem_do_look(prompt_imagem):
+    """
+    Gera a imagem realista da pessoa com o look sugerido.
+    """
     try:
-        # AQUI É ONDE EU ERREI. 
-        # Trocamos para o modelo 2.5-flash-image usando o generate_content normal,
-        # configurado para devolver apenas IMAGEM.
+        # Usamos o modelo gemini-2.5-flash-image configurado para IMAGE output
         response = client.models.generate_content(
             model='gemini-2.5-flash-image',
             contents=prompt_imagem,
@@ -78,8 +82,11 @@ with st.sidebar:
 if botao_gerar and foto_capturada and evento_usuario:
     with st.spinner("Analisando sua foto e criando seu look exclusivo... Isso pode levar um minuto."):
         imagem_pil = Image.open(foto_capturada)
+        
+        # 1. Passo: Análise da foto e criação da sugestão/prompt
         resultado_analise = analisar_imagem_e_evento(imagem_pil, evento_usuario)
         
+        # 2. Passo: Processamento da resposta
         descricao_look = "A descrição do look não pôde ser gerada."
         prompt_para_imagem = ""
         
@@ -91,12 +98,15 @@ if botao_gerar and foto_capturada and evento_usuario:
             except Exception as e:
                 descricao_look = resultado_analise
         else:
+            # Se não houver o separador, exibe a resposta inteira como descrição
             descricao_look = resultado_analise
             
+        # 3. Passo: Geração da imagem da pessoa vestindo o look
         imagem_sugerida = None
         if prompt_para_imagem:
             imagem_sugerida = gerar_imagem_do_look(prompt_para_imagem)
             
+        # 4. Passo: Exibição dos resultados na interface
         col1, col2 = st.columns(2)
         
         with col1:
