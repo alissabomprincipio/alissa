@@ -5,33 +5,32 @@ from PIL import Image
 import io
 
 # Configuração da página
-st.set_page_config(layout="wide", page_title="Assistente de Estilo Profissional")
+st.set_page_config(layout="wide", page_title="Alissa - Consultora de Moda")
 
-NOME_DO_APP = "Seu Consultor de Moda I.A."
-SUBTITULO_APP = "Descubra o look ideal para qualquer momento."
-TEXTO_RODAPE = "Transformando sua imagem com inteligência."
+NOME_DO_APP = "ALISSA"
+SUBTITULO_APP = "Sua consultoria de moda exclusiva e instantânea."
+TEXTO_RODAPE = "Powered by Blackhaus R&D Logic"
 
-# Recupera a chave da API
+# Recupera a chave da API dos Secrets do Streamlit
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except KeyError:
-    st.error("Erro: A chave da API ('GEMINI_API_KEY') não foi encontrada nas configurações 'Secrets' do Streamlit.")
+    st.error("Erro: Adicione a 'GEMINI_API_KEY' nos Secrets do Streamlit.")
     st.stop()
 
 # Inicializa o cliente da IA
 client = genai.Client(api_key=API_KEY)
 
-def analisar_imagem_e_evento(imagem_pil, texto_evento):
+def analisar_evento(imagem_pil, texto_evento):
     """
-    Analisa a foto e o evento, gerando a descrição do look e o prompt da imagem.
+    Passo 1: Analisa a foto e o evento para criar a descrição e o prompt técnico.
     """
     prompt = f"""
-    Analise a foto da pessoa fornecida e o seguinte evento ou ocasião: '{texto_evento}'.
-    Com base nas características físicas da pessoa, estilo percebido na foto e no evento,
-    crie uma sugestão completa de look profissional e fashion.
-    Sua resposta deve ter obrigatoriamente duas partes, divididas exatamente pela palavra-chave "SEPARADOR_DE_CONTEUDO":
-    Parte 1 (Descrição para a cliente): Uma descrição detalhada e elegante do look sugerido, explicando por que as peças funcionam para ela e para a ocasião.
-    Parte 2 (Prompt para a IA de imagem): Um prompt fotográfico preciso, em alta definição e realista para criar uma foto de moda. O prompt deve descrever uma pessoa com características físicas e faciais idênticas à pessoa na foto original, vestindo exatamente esse look completo no ambiente do evento. Foque em detalhes de iluminação, pose e textura dos tecidos.
+    Aja como uma consultora de moda de luxo. Analise a pessoa na foto e o evento: '{texto_evento}'.
+    Retorne a resposta EXATAMENTE neste formato, separada pela palavra SEPARADOR:
+    [Descrição elegante para a cliente sobre o porquê desse look]
+    SEPARADOR
+    [Prompt técnico em inglês para gerar a imagem. Instrução: Mantenha a pessoa da imagem original exatamente como ela é (rosto, corpo, cabelo), mas substitua suas roupas pelo look sugerido: (descreva o look aqui). O cenário deve ser o ambiente de (evento).]
     """
     
     try:
@@ -41,89 +40,70 @@ def analisar_imagem_e_evento(imagem_pil, texto_evento):
         )
         return response.text
     except Exception as e:
-        return f"Erro durante a análise: {e}"
+        return f"Erro na análise: {e}"
 
-def gerar_imagem_do_look(prompt_imagem):
+def gerar_imagem_try_on(prompt_tecnico, imagem_referencia):
     """
-    Gera a imagem realista da pessoa com o look sugerido.
+    Passo 2: O PULO DO GATO. 
+    Manda a FOTO ORIGINAL + O PROMPT para o modelo gerar a imagem baseada na referência.
     """
     try:
-        # Usamos o modelo gemini-2.5-flash-image configurado para IMAGE output
+        # Enviamos a imagem de referência JUNTO com o prompt
         response = client.models.generate_content(
             model='gemini-2.5-flash-image',
-            contents=prompt_imagem,
+            contents=[prompt_tecnico, imagem_referencia],
             config=types.GenerateContentConfig(
                 response_modalities=["IMAGE"],
             )
         )
         
-        # Pega os bytes da imagem que volta embutida na resposta
         for part in response.parts:
             if part.inline_data:
                 return Image.open(io.BytesIO(part.inline_data.data))
-                
         return None
     except Exception as e:
-        st.error(f"Erro da API de imagem: {e}")
+        st.error(f"Erro no processamento da imagem: {e}")
         return None
 
 # --- Interface ---
 st.title(NOME_DO_APP)
-st.subheader(SUBTITULO_APP)
+st.write(SUBTITULO_APP)
 st.divider()
 
 with st.sidebar:
-    st.header("Sua Foto e Ocasião")
-    st.write("Capture sua foto e nos diga para qual evento você quer se vestir.")
-    foto_capturada = st.camera_input("Tire sua foto")
-    evento_usuario = st.text_input("Qual é a ocasião?", placeholder="Ex: Casamento, entrevista de emprego, jantar romântico")
-    botao_gerar = st.button("Gerar Sugestão de Look", type="primary")
+    st.header("Entrada de Dados")
+    foto = st.camera_input("Tire sua foto")
+    evento = st.text_input("Para onde você vai?", placeholder="Ex: Casamento na praia")
+    botao = st.button("VESTIR LOOK", type="primary")
 
-if botao_gerar and foto_capturada and evento_usuario:
-    with st.spinner("Analisando sua foto e criando seu look exclusivo... Isso pode levar um minuto."):
-        imagem_pil = Image.open(foto_capturada)
+if botao and foto and evento:
+    with st.spinner("Alissa está trabalhando no seu estilo..."):
+        img_original = Image.open(foto)
         
-        # 1. Passo: Análise da foto e criação da sugestão/prompt
-        resultado_analise = analisar_imagem_e_evento(imagem_pil, evento_usuario)
+        # 1. Analisa e gera o texto/prompt
+        raw_res = analisar_evento(img_original, evento)
         
-        # 2. Passo: Processamento da resposta
-        descricao_look = "A descrição do look não pôde ser gerada."
-        prompt_para_imagem = ""
-        
-        if "SEPARADOR_DE_CONTEUDO" in resultado_analise:
-            try:
-                partes = resultado_analise.split("SEPARADOR_DE_CONTEUDO")
-                descricao_look = partes[0].strip()
-                prompt_para_imagem = partes[1].strip()
-            except Exception as e:
-                descricao_look = resultado_analise
+        if "SEPARADOR" in raw_res:
+            texto_final, prompt_final = raw_res.split("SEPARADOR")
+            
+            # 2. Gera a imagem usando a original como referência (Img2Img)
+            img_look = gerar_imagem_try_on(prompt_final.strip(), img_original)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("Sugestão da Alissa")
+                st.write(texto_final.strip())
+            
+            with col2:
+                st.subheader("Resultado Visual")
+                if img_look:
+                    st.image(img_look, use_container_width=True)
+                else:
+                    st.error("Não consegui processar a imagem do look.")
         else:
-            # Se não houver o separador, exibe a resposta inteira como descrição
-            descricao_look = resultado_analise
-            
-        # 3. Passo: Geração da imagem da pessoa vestindo o look
-        imagem_sugerida = None
-        if prompt_para_imagem:
-            imagem_sugerida = gerar_imagem_do_look(prompt_para_imagem)
-            
-        # 4. Passo: Exibição dos resultados na interface
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Sua Sugestão de Look")
-            st.markdown(descricao_look)
-            
-        with col2:
-            st.subheader("Visualização do Look")
-            if imagem_sugerida:
-                st.image(imagem_sugerida, caption="Look gerado pela I.A. para você", use_container_width=True)
-            else:
-                st.warning("Não foi possível gerar uma visualização para este look no momento.")
+            st.write(raw_res)
 
-elif botao_gerar:
-    st.warning("Por favor, tire sua foto e nos diga a ocasião antes de continuar.")
+elif botao:
+    st.warning("Preciso da sua foto e do evento para trabalhar!")
 
-else:
-    st.info("Para começar, tire sua foto e nos diga a ocasião na barra lateral e clique em 'Gerar Sugestão de Look'.")
-
-st.markdown(f"--- \n\n<p style='text-align: center; color: #666;'>{TEXTO_RODAPE}</p>", unsafe_allow_html=True)
+st.markdown(f"--- \n<p style='text-align: center;'>{TEXTO_RODAPE}</p>", unsafe_allow_html=True)
