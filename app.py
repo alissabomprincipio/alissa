@@ -31,7 +31,7 @@ st.title("ALISSA")
 st.write("Sua consultoria de moda exclusiva e instantânea.")
 
 # --- SUBSTITUA ABAIXO PELA SUA CHAVE API ---
-API_KEY = "AIzaSyCsDUouYQ-YGD7FOR9Keqttm-03lABiFqM"
+API_KEY = "sua_chave_nova_aqui"
 client = genai.Client(api_key=API_KEY)
 
 # --- ESTOQUE DA LOJA (Edite os nomes abaixo para testar) ---
